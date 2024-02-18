@@ -1,0 +1,98 @@
+%YAML 1.2
+---
+name: 'conv_mini'                  # ideally no spaces
+gpu: 0                                 # gpu id to process on
+
+dataset:
+  num_chunks: 767681                   # newest nof chunks to parse
+  allow_less_chunks: true
+  train_ratio: 0.95                    # trainingset ratio
+  input_train: 
+    - "data/*/"
+  input_test:
+    - "validate_new/"
+  input_validation:
+    - "validate_new/"
+  train_workers: 4
+  test_workers: 4
+
+training:
+    swa: true
+    swa_output: true
+    swa_steps: 100
+    swa_max_n: 10
+    mask_legal_moves: true
+    lookahead_optimizer: false
+    new_optimizer: true
+    reset_opt: false
+    weight_decay: 0.0
+    renorm: true
+    renorm_max_r: 1.0
+    renorm_max_d: 0.0
+    diff_focus_min: 0.025
+    diff_focus_slope: 3.0
+    q_ratio: 0.0
+    max_grad_norm: 3.0
+    batch_size: 256                  # training batch
+    num_batch_splits: 1
+    test_steps: 1000                 # eval test set values after this many steps
+    validation_steps: 1000                    # eval validation set values after this many steps
+    num_test_positions: 2048
+    train_avg_report_steps: 100        # training reports its average values after this many steps.
+    total_steps: 100000000                  # terminate after these steps
+    warmup_steps: 1000
+    #warmup_offset: 7064000
+    checkpoint_steps: 100000          # optional frequency for checkpointing before finish
+    shuffle_size: 2048              # size of the shuffle buffer
+    lr_values:                         # list of learning rates
+        - 0.0005
+        - 0.0005
+    lr_boundaries:                     # list of boundaries
+        - 100
+    policy_loss_weight: 1.0            # weight of policy loss
+    value_loss_weight:  1.0            # weight of value loss
+    moves_left_loss_weight: 1.0            # weight of moves left head loss
+    reg_term_weight: 1.0
+    path: 'networks/'         # network storage dir
+
+    optimizer: nadam # sgd/nadam/rmsprop/adabelief
+    beta_1: 0.9 
+    beta_2: 0.999  # these values are only for Nadam
+    epsilon: 0.0000001 # 1e-7
+    sparse: false
+
+model:
+    default_activation: 'mish'          
+    embedding_size: 128
+    policy_embedding_size: 128
+    value_embedding_size: 64
+    moves_left_embedding_size: 8
+    encoder_layers: 4                   # number of intermediate attention layers in the policy head
+    encoder_heads: 8                     # number of attention heads in encoder layers, emb // (32 or 64) recommended
+                                         # with 64 memory is same as embedding, with 32 is double
+    encoder_d_model: 128                 # size of the Q, K, & V vectors in encoder layers -- divisible by encoder_heads
+    encoder_dff: 128                    # size of the expansion layer in encoder layer ffn
+    glu: false
+    square_relu_ffn: false # ALWAYS SUGGESTED
+    policy_d_model: 128                  # size of the query and key vectors in final attention layer
+    dropout_rate: 0.0                   # the dropout rate used for weight regularization of attention during training
+                                        # makes memory 33 -> 39 GB on A100 as observed by Teck and Kovax
+
+    value: 'wdl'
+    policy: 'attention'
+    moves_left: 'v1'
+    input_type: 'classic'
+
+    # apparently adds nothing with fullgen, but tests needed
+    arc_encoding: false
+    
+    # smolgen: more efficient version of fullgen, adds a lot of params
+    use_smolgen: true
+    smolgen_hidden_channels: 32
+    smolgen_hidden_sz: 128
+    smolgen_gen_sz: 128
+    smolgen_activation: 'swish'
+
+    # bad considering latency bump
+    talking_heads: false
+...
