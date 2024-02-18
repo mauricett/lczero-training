@@ -1342,7 +1342,6 @@ class TFProcess:
         out = tf.keras.layers.Dense(emb_size,
                                     name=name + "/dense2",
                                     kernel_initializer=initializer)(dense1)
-        print(out.shape)
         return out
 
     def encoder_layer(self, inputs, emb_size: int, d_model: int,
