@@ -1335,15 +1335,23 @@ class TFProcess:
                 self.DEFAULT_ACTIVATION)
         else:
             activation = "selu"
-        dense1 = tf.keras.layers.Dense(dff,
-                                       name=name + "/dense1",
+        conv1 = tf.keras.layers.Conv2D(filters=emb_size,
+                                       kernel_size=3,
+                                       padding='same',
+                                       data_format='channels_last',
+                                       activation=activation,
                                        kernel_initializer=initializer,
-                                       activation=activation)(inputs)
-        out = tf.keras.layers.Dense(emb_size,
-                                    name=name + "/dense2",
-                                    kernel_initializer=initializer)(dense1)
-        print(out.shape)
-        return out
+                                       bias_initializer='zeros',
+                                       name=name + "/conv1")(inputs)
+        conv2 = tf.keras.layers.Conv2D(filters=emb_size,
+                                       kernel_size=3,
+                                       padding='same',
+                                       data_format='channels_last',
+                                       activation=activation,
+                                       use_bias=False,
+                                       kernel_initializer=initializer,
+                                       name=name + "/conv2")(conv1)
+        return conv2
 
     def encoder_layer(self, inputs, emb_size: int, d_model: int,
                       num_heads: int, dff: int, name: str):
@@ -1373,9 +1381,10 @@ class TFProcess:
                                               "/dropout1")(attn_output)
         # skip connection + layernorm
         out1 = tf.keras.layers.LayerNormalization(
-            epsilon=1e-6, name=name + "/ln1")(inputs * alpha + attn_output)
+            epsilon=1e-6, name=name + "/ln1", axis=-2)(inputs * alpha + attn_output)
         # feed-forward network
-        ffn_output = self.ffn(out1,
+        out2 = tf.reshape(out1, (-1, 8, 8, emb_size))
+        ffn_output = self.ffn(out2,
                               emb_size,
                               dff,
                               initializer,
@@ -1383,8 +1392,9 @@ class TFProcess:
         ffn_output = tf.keras.layers.Dropout(self.dropout_rate,
                                              name=name +
                                              "/dropout2")(ffn_output)
+        ffn_output = tf.reshape(ffn_output, (-1, 64, emb_size))
         out2 = tf.keras.layers.LayerNormalization(
-            epsilon=1e-6, name=name + "/ln2")(out1 * alpha + ffn_output)
+            epsilon=1e-6, name=name + "/ln2", axis=-2)(out1 * alpha + ffn_output)
         return out2, attn_wts
 
     def smolgen_weights(self,
